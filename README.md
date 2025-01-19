@@ -1,1 +1,1 @@
-# Kursovaya
+# hospital-prescription-api

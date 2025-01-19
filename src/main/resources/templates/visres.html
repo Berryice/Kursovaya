@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visit Results Management</title>
+    <style>
+        /* Стили для навигации */
+        nav {
+            background-color: #28a745;
+            padding: 10px;
+            text-align: center;
+            width: 100%; /* Растягиваем на всю ширину */
+            position: fixed; /* Закрепляем навигацию вверху */
+            top: 0; /* Выровнено по верхнему краю */
+            left: 0; /* Выровнено по левому краю */
+            z-index: 1000; /* Устанавливаем высокий z-index для отображения над другими элементами */
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 18px;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            margin-top: 60px; /* Добавляем отступ сверху, чтобы контент не перекрывался навигацией */
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            text-align: center;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        input {
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+
+        button {
+            padding: 5px 10px; /* Уменьшено значение padding */
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-left: 5px; /* Отступ между кнопками */
+            font-size: 14px; /* Уменьшение размера шрифта */
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            display: flex; /* Используем flexbox для выравнивания элементов внутри списка */
+            justify-content: space-between; /* Разделяем элементы по краям */
+            align-items: center; /* Выравниваем по центру по вертикали */
+            margin-bottom: 10px; /* Отступ между элементами списка */
+        }
+
+        .action-buttons {
+            display: flex; /* Используем flexbox для кнопок */
+            gap: 10px; /* Отступ между кнопками */
+        }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/">Кабинеты</a>
+    <a href="/doctor">Врачи</a>
+    <a href="/user">Пользователи</a>
+    <a href="/visitResults">Результаты посещений</a>
+    <a href="/visit">Приёмы</a>
+</nav>
+
+<div class="container">
+    <h1>Visit Results Management</h1>
+
+    <form id="visitResultForm">
+        <input type="number" id="visit_id" placeholder="Visit ID" required>
+        <input type="text" id="result" placeholder="Result" required>
+        <input type="text" id="addiction_file" placeholder="Addiction File" required>
+        <button type="submit">Add Visit Result</button>
+    </form>
+
+    <h2>All Visit Results</h2>
+    <ul id="visitResultsList"></ul>
+</div>
+
+<script>
+    const apiUrl = 'http://localhost:9094/visit_results'; // URL вашего API
+
+    document.getElementById('visitResultForm').addEventListener('submit', async (e) => {
+        e.preventDefault(); // Предотвращаем перезагрузку страницы
+
+        const visit_id = document.getElementById('visit_id').value;
+        const result = document.getElementById('result').value;
+        const addiction_file = document.getElementById('addiction_file').value;
+
+        // Создание нового результата посещения
+        const newVisitResult = { visit_id, result, addiction_file };
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newVisitResult),
+            });
+
+            if (response.ok) {
+                await fetchVisitResults(); // Обновляем список результатов посещений
+                document.getElementById('visitResultForm').reset(); // Сбрасываем форму
+            } else {
+                console.error('Error adding visit result:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+
+    // Получение всех результатов посещений
+    async function fetchVisitResults() {
+        try {
+            const response = await fetch(apiUrl);
+            const visitResults = await response.json();
+
+            const visitResultsList = document.getElementById('visitResultsList');
+            visitResultsList.innerHTML = ''; // Очищаем список перед обновлением
+
+            visitResults.forEach(visitResult => {
+                const li = document.createElement('li');
+                li.textContent = `Visit ID ${visitResult.visit_id}: ${visitResult.result}`;
+
+                // Создаем контейнер для кнопок
+                const actionButtons = document.createElement('div');
+                actionButtons.className = 'action-buttons';
+
+                // Кнопка изменения
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit';
+                editButton.onclick = () => editVisitResult(visitResult.result_id);
+
+                // Кнопка удаления
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => deleteVisitResult(visitResult.result_id);
+
+                actionButtons.appendChild(editButton);
+                actionButtons.appendChild(deleteButton);
+
+                li.appendChild(actionButtons);
+                visitResultsList.appendChild(li);
+            });
+
+        } catch (error) {
+            console.error('Error fetching visit results:', error);
+        }
+    }
+
+    // Функция для редактирования результата посещения
+    async function editVisitResult(id) {
+        const result = prompt("Enter new result:");
+        const addiction_file = prompt("Enter new addiction file:");
+
+        if (result && addiction_file) {
+            const updatedVisitResult = { result, addiction_file };
+
+            try {
+                const response = await fetch(`${apiUrl}/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updatedVisitResult),
+                });
+
+                if (response.ok) {
+                    await fetchVisitResults(); // Обновляем список результатов посещений
+                } else {
+                    console.error('Error updating visit result:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    }
+
+    // Функция для удаления результата посещения
+    async function deleteVisitResult(id) {
+        if (confirm("Are you sure you want to delete this visit result?")) {
+            try {
+                const response = await fetch(`${apiUrl}/${id}`, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    await fetchVisitResults(); // Обновляем список результатов посещений
+                } else {
+                    console.error('Error deleting visit result:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    }
+
+    // Загружаем результаты посещений при загрузке страницы
+    window.onload = fetchVisitResults;
+
+</script>
+
+</body>
+</html>

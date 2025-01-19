@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctors Management</title>
+    <style>
+        nav {
+            background-color: #28a745;
+            padding: 10px;
+            text-align: center;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 18px;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            margin-top: 60px;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            text-align: center;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        input {
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+
+        button {
+            padding: 5px 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-left: 5px;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/">Кабинеты</a>
+    <a href="/doctor">Врачи</a>
+    <a href="/user">Пользователи</a>
+    <a href="/visitResults">Результаты посещений</a>
+    <a href="/visit">Приёмы</a>
+</nav>
+
+<div class="container">
+    <h1>Doctors Management</h1>
+
+    <form id="doctorForm">
+        <input type="text" id="name" placeholder="Doctor Name" required>
+        <input type="text" id="speciality" placeholder="Speciality" required>
+        <button type="submit">Add Doctor</button>
+    </form>
+
+    <h2>All Doctors</h2>
+    <ul id="doctorsList"></ul>
+</div>
+
+<script>
+    const apiUrl = 'http://localhost:9094/doctors';
+
+    document.getElementById('doctorForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const name = document.getElementById('name').value;
+        const speciality = document.getElementById('speciality').value;
+        const newDoctor = { name, speciality };
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newDoctor),
+            });
+
+            if (response.ok) {
+                await fetchDoctors();
+                document.getElementById('doctorForm').reset();
+            } else {
+                console.error('Error adding doctor:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+
+    async function fetchDoctors() {
+        try {
+            const response = await fetch(apiUrl);
+            const doctors = await response.json();
+
+            const doctorsList = document.getElementById('doctorsList');
+            doctorsList.innerHTML = '';
+
+            doctors.forEach(doctor => {
+                const li = document.createElement('li');
+                li.textContent = `${doctor.name} - ${doctor.speciality}`;
+
+                const actionButtons = document.createElement('div');
+                actionButtons.className = 'action-buttons';
+
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit';
+                editButton.onclick = () => editDoctor(doctor.id);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => deleteCabinet(doctor.id);
+
+                actionButtons.appendChild(editButton);
+                actionButtons.appendChild(deleteButton);
+
+                li.appendChild(actionButtons);
+                doctorsList.appendChild(li);
+            });
+
+        } catch (error) {
+            console.error('Error fetching doctors:', error);
+        }
+    }
+    async function editDoctor(id) {
+        const name = prompt("Enter new name:");
+        const speciality = prompt("Enter new speciality:");
+
+        if (name && speciality) {
+            const updatedDoctor = { name, speciality };
+
+            try {
+                const response = await fetch(`${apiUrl}/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updatedDoctor),
+                });
+
+                if (response.ok) {
+                    await fetchDoctors();
+                } else {
+                    console.error('Error updating doctor:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    }
+
+    async function deleteCabinet(id) {
+        if (confirm("Are you sure you want to delete this doctor?")) {
+            try {
+                const response = await fetch(`${apiUrl}/${id}`, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    await fetchDoctors();
+                } else {
+                    console.error('Error deleting doctor:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    }
+    window.onload = fetchDoctors;
+</script>
+
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visits Management</title>
+    <style>
+        /* Стили для навигации */
+        nav {
+            background-color: #28a745;
+            padding: 10px;
+            text-align: center;
+            width: 100%; /* Растягиваем на всю ширину */
+            position: fixed; /* Закрепляем навигацию вверху */
+            top: 0; /* Выровнено по верхнему краю */
+            left: 0; /* Выровнено по левому краю */
+            z-index: 1000; /* Устанавливаем высокий z-index для отображения над другими элементами */
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 18px;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            margin-top: 60px; /* Добавляем отступ сверху, чтобы контент не перекрывался навигацией */
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            text-align: center;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        input {
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+
+        button {
+            padding: 5px 10px; /* Уменьшено значение padding */
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            display: flex; /* Используем flexbox для выравнивания элементов внутри списка */
+            justify-content: space-between; /* Разделяем элементы по краям */
+            align-items: center; /* Выравниваем по центру по вертикали */
+            margin-bottom: 10px; /* Отступ между элементами списка */
+        }
+
+        .action-buttons {
+            display: flex; /* Используем flexbox для кнопок */
+            gap: 10px; /* Отступ между кнопками */
+            align-items: center; /* Выравниваем кнопки по центру по вертикали */
+        }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/">Кабинеты</a>
+    <a href="/doctor">Врачи</a>
+    <a href="/user">Пользователи</a>
+    <a href="/visitResults">Результаты посещений</a>
+    <a href="/visit">Приёмы</a>
+</nav>
+
+<div class="container">
+    <h1>Visits Management</h1>
+
+    <form id="visitForm">
+        <input type="number" id="user_id" placeholder="User ID" required>
+        <input type="number" id="from_id" placeholder="From ID" required>
+        <input type="number" id="to_id" placeholder="To ID" required>
+        <input type="text" id="reasons" placeholder="Reasons" required>
+        <input type="datetime-local" id="date_time" required>
+        <button type="submit">Add Visit</button>
+    </form>
+
+    <h2>All Visits</h2>
+    <ul id="visitsList"></ul>
+</div>
+
+<script>
+    const apiUrl = 'http://localhost:9094/visits'; // URL вашего API
+
+    document.getElementById('visitForm').addEventListener('submit', async (e) => {
+        e.preventDefault(); // Предотвращаем перезагрузку страницы
+
+        const user_id = document.getElementById('user_id').value;
+        const from_id = document.getElementById('from_id').value;
+        const to_id = document.getElementById('to_id').value;
+        const reasons = document.getElementById('reasons').value;
+        const date_time = document.getElementById('date_time').value;
+
+        // Создание нового посещения
+        const newVisit = { user_id, from_id, to_id, reasons, date_time };
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newVisit),
+            });
+
+            if (response.ok) {
+                await fetchVisits(); // Обновляем список посещений
+                document.getElementById('visitForm').reset(); // Сбрасываем форму
+            } else {
+                console.error('Error adding visit:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+
+    // Получение всех посещений
+    async function fetchVisits() {
+        try {
+            const response = await fetch(apiUrl);
+            const visits = await response.json();
+
+            const visitsList = document.getElementById('visitsList');
+            visitsList.innerHTML = ''; // Очищаем список перед обновлением
+
+            visits.forEach(visit => {
+                const li = document.createElement('li');
+                li.textContent = `User ID ${visit.user_id}: From ${visit.from_id} to ${visit.to_id} - ${visit.reasons}`;
+
+                // Создаем контейнер для кнопок
+                const actionButtons = document.createElement('div');
+                actionButtons.className = 'action-buttons';
+
+                // Кнопка изменения
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit';
+                editButton.onclick = () => editVisit(visit.id);
+
+                // Кнопка удаления
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => deleteVisit(visit.id);
+
+                actionButtons.appendChild(editButton);
+                actionButtons.appendChild(deleteButton);
+
+                li.appendChild(actionButtons);
+                visitsList.appendChild(li);
+            });
+
+        } catch (error) {
+            console.error('Error fetching visits:', error);
+        }
+    }
+
+    // Функция для редактирования посещения
+    async function editVisit(id) {
+        const user_id = prompt("Enter new User ID:");
+        const from_id = prompt("Enter new From ID:");
+        const to_id = prompt("Enter new To ID:");
+        const reasons = prompt("Enter new Reasons:");
+        const date_time = prompt("Enter new Date Time:");
+
+        if (user_id && from_id && to_id && reasons && date_time) {
+            const updatedVisit = { user_id, from_id, to_id, reasons, date_time };
+
+            try {
+                const response = await fetch(`${apiUrl}/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updatedVisit),
+                });
+
+                if (response.ok) {
+                    await fetchVisits(); // Обновляем список посещений
+                } else {
+                    console.error('Error updating visit:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    }
+
+    // Функция для удаления посещения
+    async function deleteVisit(id) {
+        if (confirm("Are you sure you want to delete this visit?")) {
+            try {
+                const response = await fetch(`${apiUrl}/${id}`, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    await fetchVisits(); // Обновляем список посещений
+                } else {
+                    console.error('Error deleting visit:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    }
+
+    // Загружаем посещения при загрузке страницы
+    window.onload = fetchVisits;
+
+</script>
+
+</body>
+</html>

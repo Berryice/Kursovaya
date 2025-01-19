@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cabinets Management</title>
+    <style>
+        /* Стили для навигации */
+        nav {
+            background-color: #28a745;
+            padding: 10px;
+            text-align: center;
+            width: 100%; /* Растягиваем на всю ширину */
+            position: fixed; /* Закрепляем навигацию вверху */
+            top: 0; /* Выровнено по верхнему краю */
+            left: 0; /* Выровнено по левому краю */
+            z-index: 1000; /* Устанавливаем высокий z-index для отображения над другими элементами */
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 18px;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            margin-top: 60px; /* Добавляем отступ сверху, чтобы контент не перекрывался навигацией */
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            text-align: center;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        input {
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+
+        button {
+            padding: 5px 10px; /* Уменьшено значение padding */
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-left: 5px; /* Отступ между кнопками */
+            font-size: 14px; /* Уменьшение размера шрифта */
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            display: flex; /* Используем flexbox для выравнивания элементов внутри списка */
+            justify-content: space-between; /* Разделяем элементы по краям */
+            align-items: center; /* Выравниваем по центру по вертикали */
+            margin-bottom: 10px; /* Отступ между элементами списка */
+        }
+
+        .action-buttons {
+            display: flex; /* Используем flexbox для кнопок */
+        }
+
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/">Кабинеты</a>
+    <a href="/doctor">Врачи</a>
+    <a href="/user">Пользователи</a>
+    <a href="/visitResults">Результаты посещений</a>
+    <a href="/visit">Приёмы</a>
+</nav>
+
+<div class="container">
+    <h1>Cabinets Management</h1>
+
+    <form id="cabinetForm">
+        <input type="text" id="name" placeholder="Cabinet Name" required>
+        <input type="text" id="number" placeholder="Cabinet Number" required>
+        <button type="submit">Add Cabinet</button>
+    </form>
+
+    <h2>All Cabinets</h2>
+    <ul id="cabinetsList"></ul>
+</div>
+
+<script>
+    const apiUrl = 'http://localhost:9094/cabinets'; // URL вашего API
+
+    document.getElementById('cabinetForm').addEventListener('submit', async (e) => {
+        e.preventDefault(); // Предотвращаем перезагрузку страницы
+
+        const name = document.getElementById('name').value;
+        const number = document.getElementById('number').value;
+
+        // Создание нового кабинета
+        const newCabinet = { name, number };
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newCabinet),
+            });
+
+            if (response.ok) {
+                await fetchCabinets(); // Обновляем список кабинетов
+                document.getElementById('cabinetForm').reset(); // Сбрасываем форму
+            } else {
+                console.error('Error adding cabinet:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+
+    // Получение всех кабинетов
+    async function fetchCabinets() {
+        try {
+            const response = await fetch(apiUrl);
+            const cabinets = await response.json();
+
+            const cabinetsList = document.getElementById('cabinetsList');
+            cabinetsList.innerHTML = ''; // Очищаем список перед обновлением
+
+            cabinets.forEach(cabinet => {
+                const li = document.createElement('li');
+                li.textContent = `${cabinet.name} - ${cabinet.number}`;
+
+                // Создаем контейнер для кнопок
+                const actionButtons = document.createElement('div');
+                actionButtons.className = 'action-buttons';
+
+                // Кнопка изменения
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit';
+                editButton.onclick = () => editCabinet(cabinet.id);
+
+                // Кнопка удаления
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => deleteCabinet(cabinet.id);
+
+                actionButtons.appendChild(editButton);
+                actionButtons.appendChild(deleteButton);
+
+                li.appendChild(actionButtons);
+                cabinetsList.appendChild(li);
+            });
+
+        } catch (error) {
+            console.error('Error fetching cabinets:', error);
+        }
+    }
+
+    // Функция для редактирования кабинета
+    async function editCabinet(id) {
+        const name = prompt("Enter new cabinet name:");
+        const number = prompt("Enter new cabinet number:");
+
+        if (name && number) {
+            const updatedCabinet = { name, number };
+
+            try {
+                const response = await fetch(`${apiUrl}/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updatedCabinet),
+                });
+
+                if (response.ok) {
+                    await fetchCabinets(); // Обновляем список кабинетов
+                } else {
+                    console.error('Error updating cabinet:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    }
+
+    // Функция для удаления кабинета
+    async function deleteCabinet(id) {
+        if (confirm("Are you sure you want to delete this cabinet?")) {
+            try {
+                const response = await fetch(`${apiUrl}/${id}`, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    await fetchCabinets(); // Обновляем список кабинетов
+                } else {
+                    console.error('Error deleting cabinet:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    }
+
+    // Загружаем кабинеты при загрузке страницы
+    window.onload = fetchCabinets;
+
+</script>
+
+</body>
+</html>
